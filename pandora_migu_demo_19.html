@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>潘多拉 × 咪咕音乐 · AI意图分发 Demo</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  background: #F5F6F7;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.page-header h1 {
+  font-size: 22px;
+  font-weight: 500;
+  color: #1A1F2E;
+  margin-bottom: 6px;
+}
+.page-header p {
+  font-size: 14px;
+  color: #6B7280;
+}
+
+.demo-wrap {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  max-width: 740px;
+  width: 100%;
+}
+
+.phone {
+  width: 260px;
+  min-width: 260px;
+  background: #fff;
+  border: 1px solid #DEE0E3;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+}
+
+.phone-status {
+  background: #1A1F2E;
+  padding: 12px 20px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.phone-status .time { color: #fff; font-size: 13px; font-weight: 500; }
+.phone-status .icons { display: flex; gap: 4px; align-items: center; }
+.phone-status .icons i { color: #fff; font-size: 13px; }
+
+.phone-screen { background: #0D1117; min-height: 420px; }
+
+.chat-header {
+  background: #1A1F2E;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, #5B4FCF, #0F6E56);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #fff; font-weight: 500; flex-shrink: 0;
+}
+.chat-header-info .name { font-size: 13px; color: #fff; font-weight: 500; }
+.chat-header-info .status { font-size: 11px; color: #4CD964; }
+
+.chat-messages {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 300px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.chat-messages::-webkit-scrollbar { width: 3px; }
+.chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.msg {
+  max-width: 85%;
+  border-radius: 14px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  animation: fadeIn 0.3s ease;
+}
+.msg.user { align-self: flex-end; background: #5B4FCF; color: #EEEDFE; border-bottom-right-radius: 4px; }
+.msg.bot { align-self: flex-start; background: #1E2A3A; color: #C8D0DC; border-bottom-left-radius: 4px; }
+.msg.thinking { background: #1E2A3A; align-self: flex-start; }
+
+.dots span {
+  display: inline-block; width: 6px; height: 6px;
+  background: #5B8DB8; border-radius: 50%; margin-right: 3px;
+  animation: bounce 1s infinite;
+}
+.dots span:nth-child(2) { animation-delay: 0.15s; }
+.dots span:nth-child(3) { animation-delay: 0.3s; }
+
+.music-card {
+  background: #1E2A3A; border-radius: 12px; padding: 10px;
+  align-self: flex-start; max-width: 90%;
+  border: 1px solid rgba(255,255,255,0.08);
+  animation: fadeIn 0.3s ease;
+}
+.music-card-inner { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.album-art {
+  width: 44px; height: 44px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.song-info .title { font-size: 12px; font-weight: 500; color: #E8EDF2; }
+.song-info .artist { font-size: 11px; color: #7A8A9A; }
+.playlist-tracks { margin: 8px 0; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; }
+.playlist-track {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 4px; border-radius: 6px; cursor: pointer; transition: all 0.15s;
+}
+.playlist-track:hover { background: rgba(255,255,255,0.05); }
+.playlist-track.playing { background: rgba(91,79,207,0.15); }
+.track-num { font-size: 11px; color: #4A5568; width: 16px; text-align: center; flex-shrink: 0; }
+.track-name { font-size: 12px; color: #C8D0DC; flex: 1; }
+.playlist-track.playing .track-name { color: #A78BFA; }
+.track-play { font-size: 12px; color: #4A5568; }
+.playlist-track:hover .track-play { color: #9CA3AF; }
+.playlist-track.playing .track-play { display: none; }
+.more-track { opacity: 0.5; }
+.fav-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: transparent; border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+  margin-left: auto;
+}
+.fav-btn i { font-size: 16px; color: #4A5568; transition: all 0.2s; }
+.fav-btn:hover i { color: #9CA3AF; }
+.fav-btn.faved i { color: #F87171; }
+.vip-tag {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  color: #F59E0B; background: rgba(245,158,11,0.12);
+  padding: 1px 5px; border-radius: 3px;
+  vertical-align: middle; margin-left: 4px;
+}
+.paid-tip { font-size: 10px; color: #92400E; margin-top: 3px; }
+.vip-banner {
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(90deg, rgba(245,158,11,0.12), rgba(245,158,11,0.06));
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 8px; padding: 8px 12px;
+  margin: 6px 0; cursor: pointer; transition: all 0.2s;
+}
+.vip-banner:hover { background: linear-gradient(90deg, rgba(245,158,11,0.2), rgba(245,158,11,0.1)); }
+.vip-banner i { font-size: 14px; color: #F59E0B; }
+.vip-banner span { font-size: 12px; color: #D97706; flex: 1; }
+.vip-banner-arrow { font-size: 16px; color: #F59E0B; flex: none !important; }
+.song-info .source { font-size: 10px; color: #1D9E75; margin-top: 2px; }
+.progress-bar { height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
+.progress-fill { height: 100%; background: #5B4FCF; border-radius: 2px; width: 0%; transition: width 0.1s; }
+.player-controls { display: flex; justify-content: center; align-items: center; gap: 16px; }
+.player-controls i { color: #C8D0DC; font-size: 16px; cursor: pointer; }
+.play-btn {
+  width: 28px; height: 28px; border-radius: 50%; background: #5B4FCF;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;
+}
+.play-btn i { font-size: 14px; color: #fff; }
+
+.chat-input {
+  background: #1A1F2E; padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.chat-input input {
+  flex: 1; background: rgba(255,255,255,0.06); border: none;
+  border-radius: 20px; padding: 6px 12px; font-size: 12px;
+  color: #C8D0DC; outline: none;
+}
+.chat-input input::placeholder { color: #4A5568; }
+.chat-input input:disabled { opacity: 0.5; }
+.send-btn {
+  width: 28px; height: 28px; border-radius: 50%; background: #5B4FCF;
+  border: none; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+.send-btn i { color: #fff; font-size: 14px; }
+.phone-home { background: #1A1F2E; height: 4px; border-radius: 2px; width: 80px; margin: 8px auto; }
+
+.side-panel { flex: 1; }
+.side-panel h3 { font-size: 16px; font-weight: 500; color: #1A1F2E; margin-bottom: 12px; }
+
+.step-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.step-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: 8px;
+  border: 1px solid #E2E8F0; background: #fff;
+  transition: all 0.3s; opacity: 0.45;
+}
+.step-item.active { opacity: 1; border-color: #93C5FD; background: #EFF6FF; }
+.step-item.done { opacity: 1; border-color: #86EFAC; background: #F0FFF4; }
+.step-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; border: 1px solid #E2E8F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 500; color: #6B7280; flex-shrink: 0;
+}
+.step-item.active .step-num { background: #EFF6FF; border-color: #93C5FD; color: #1D4ED8; }
+.step-item.done .step-num { background: #F0FFF4; border-color: #86EFAC; color: #15803D; }
+.step-text .label { font-size: 13px; font-weight: 500; color: #1A1F2E; }
+.step-text .desc { font-size: 12px; color: #6B7280; margin-top: 2px; }
+
+.tag {
+  display: inline-block; padding: 2px 8px;
+  border-radius: 6px; font-size: 11px; font-weight: 500;
+}
+.tag-sdk { background: #EFF6FF; color: #1D4ED8; }
+.tag-migu { background: #F0FFF4; color: #15803D; }
+
+.preset-btns { margin-bottom: 16px; }
+.preset-btns p { font-size: 12px; color: #6B7280; margin-bottom: 8px; }
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.preset-btn {
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid #E2E8F0; background: #fff;
+  font-size: 12px; color: #1A1F2E; cursor: pointer;
+  text-align: left; transition: all 0.2s; line-height: 1.4;
+}
+.preset-btn:hover { background: #F5F6F7; border-color: #CBD5E0; }
+.preset-btn i { font-size: 14px; color: #6B7280; margin-right: 4px; vertical-align: -2px; }
+
+.reset-btn {
+  width: 100%; padding: 8px; border-radius: 8px;
+  border: 1px solid #E2E8F0; background: #fff;
+  font-size: 13px; color: #6B7280; cursor: pointer; transition: all 0.2s;
+}
+.reset-btn:hover { background: #F5F6F7; }
+.reset-btn i { margin-right: 4px; vertical-align: -2px; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-4px); }
+}
+
+@media (max-width: 600px) {
+  .demo-wrap { flex-direction: column; align-items: center; }
+  .side-panel { width: 100%; max-width: 260px; }
+}
+ 50%{transform:scaleY(1.8)} }
+</style>
+</head>
+<body>
+
+
+
+<div class="demo-wrap">
+  <div class="phone">
+    <div class="phone-status">
+      <span class="time">9:41</span>
+      <div class="icons">
+        <i class="ti ti-wifi"></i>
+        <i class="ti ti-battery-2"></i>
+      </div>
+    </div>
+    <div class="phone-screen">
+      <div class="chat-header">
+        <div class="avatar">小跃</div>
+        <div class="chat-header-info">
+          <div class="name">小跃</div>
+          <div class="status">● 在线</div>
+        </div>
+      </div>
+      <div class="chat-messages" id="messages">
+        <div class="msg bot">嗨，我是小跃 👋 有什么需要帮你的？</div>
+      </div>
+      <div class="chat-input">
+        <input type="text" id="userInput" placeholder="和小跃说话..." />
+        <button class="send-btn" onclick="sendMsg()">
+          <i class="ti ti-send"></i>
+        </button>
+      </div>
+    </div>
+    <div class="phone-home"></div>
+  </div>
+
+  <div class="side-panel">
+    <h3>调用流程</h3>
+    <div class="step-list">
+      <div class="step-item" id="step1">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <div class="label">用户说话</div>
+          <div class="desc">自然语言触发，无需打开任何 App</div>
+        </div>
+      </div>
+      <div class="step-item" id="step2">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <div class="label">小跃识别意图</div>
+          <div class="desc">理解你想要什么</div>
+        </div>
+      </div>
+      <div class="step-item" id="step3">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <div class="label">调用咪咕 SDK <span class="tag tag-sdk">SDK</span></div>
+          <div class="desc">后台静默调起音乐</div>
+        </div>
+      </div>
+      <div class="step-item" id="step4">
+        <div class="step-num">4</div>
+        <div class="step-text">
+          <div class="label">直接播放 <span class="tag tag-migu">咪咕音乐</span></div>
+          <div class="desc">4000万+ 正版曲库直接播放</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="preset-btns">
+      <p>快速体验，点击发送：</p>
+      <div class="preset-grid">
+        <button class="preset-btn" onclick="usePreset('我想听周杰伦的歌')">
+          <i class="ti ti-music"></i>我想听周杰伦
+        </button>
+        <button class="preset-btn" onclick="usePreset('来首适合专注工作的纯音乐')">
+          <i class="ti ti-brain"></i>专注工作
+        </button>
+        <button class="preset-btn" onclick="usePreset('这段旋律是什么歌')">
+          <i class="ti ti-microphone"></i>哼唱识曲
+        </button>
+        <button class="preset-btn" onclick="usePreset('给我推荐热门榜单')">
+          <i class="ti ti-trending-up"></i>热门榜单
+        </button>
+        <button class="preset-btn" onclick="usePreset('我心情不好想听伤感的歌')">
+          <i class="ti ti-cloud-rain"></i>心情不好
+        </button>
+        <button class="preset-btn" onclick="usePreset('来首节奏感强的跑步音乐')">
+          <i class="ti ti-run"></i>跑步健身
+        </button>
+      </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetDemo()">
+      <i class="ti ti-refresh"></i> 重置 Demo
+    </button>
+  </div>
+</div>
+
+<script>
+// 单曲卡片
+const songs = {
+  '专注':   { type:'song', emoji: '🎧', title: 'Rainy Day', artist: '纯音乐', color: '#0A3D2E' },
+  '旋律':   { type:'song', emoji: '🎶', title: '已识别：七里香', artist: '周杰伦', color: '#2D1B69' },
+  '伤感':   { type:'song', emoji: '🌧️', title: '以父之名', artist: '周杰伦', color: '#1A1A3A', paid: true },
+  '运动':   { type:'song', emoji: '⚡', title: 'Power Up', artist: 'AI生成', color: '#3A1A0A' },
+};
+// 歌单卡片
+const playlists = {
+  '周杰伦': {
+    type: 'playlist',
+    cover: '🎵',
+    color: '#2D1B69',
+    title: '周杰伦精选',
+    desc: '收录 32 首 · 热门必听',
+    tracks: ['晴天', '七里香', '稻香', '以父之名', '夜曲', '告白气球']
+  },
+  '热门': {
+    type: 'playlist',
+    cover: '🔥',
+    color: '#3D1A0A',
+    title: '本周热歌榜',
+    desc: '更新于今日 · 42 首',
+    tracks: ['起风了', '漠河舞厅', '踏山河', '白月光与朱砂痣', '错位时空']
+  },
+};
+
+let playing = false;
+let progressTimer = null;
+let currentProgress = 0;
+let isRunning = false;
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step' + i);
+    el.classList.remove('active', 'done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add('active');
+  }
+}
+
+function addMsg(text, type, delay) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'msg ' + type;
+      div.textContent = text;
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+      resolve();
+    }, delay);
+  });
+}
+
+function addThinking(delay) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'msg thinking';
+      div.id = 'thinking';
+      div.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>';
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+      resolve();
+    }, delay);
+  });
+}
+
+function removeThinking() {
+  const t = document.getElementById('thinking');
+  if (t) t.remove();
+}
+
+function addMusicCard(key, delay) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      removeThinking();
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'music-card';
+
+      if (playlists[key]) {
+        const pl = playlists[key];
+        div.innerHTML = `
+          <div class="music-card-inner">
+            <div class="album-art" style="background:${pl.color};font-size:24px;">${pl.cover}</div>
+            <div class="song-info">
+              <div class="title">${pl.title}</div>
+              <div class="artist">${pl.desc}</div>
+            </div>
+            <button class="fav-btn" onclick="toggleCardFav(this)" title="收藏">
+              <i class="ti ti-heart"></i>
+            </button>
+          </div>
+          <div class="playlist-tracks">
+            ${pl.tracks.slice(0,4).map((t,i) => `
+              <div class="playlist-track" onclick="playTrack(this)">
+                <span class="track-num">${i+1}</span>
+                <span class="track-name">${t}</span>
+                <i class="ti ti-player-play track-play"></i>
+              </div>`).join('')}
+            <div class="playlist-track more-track">
+              <span class="track-num">···</span>
+              <span class="track-name" style="color:#6B7280">查看全部 ${pl.tracks.length}+ 首</span>
+            </div>
+          </div>
+          <div class="player-controls" style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">
+            <i class="ti ti-player-skip-back"></i>
+            <button class="play-btn" onclick="togglePlay()">
+              <i class="ti ti-player-pause" id="playIcon"></i>
+            </button>
+            <i class="ti ti-player-skip-forward"></i>
+          </div>`;
+      } else if (songs[key]) {
+        const song = songs[key];
+        const isPaid = song.paid || false;
+        const hasVip = false; // 模拟未开通会员
+        div.innerHTML = `
+          <div class="music-card-inner">
+            <div class="album-art" style="background:${song.color}">${song.emoji}</div>
+            <div class="song-info">
+              <div class="title">${song.title} ${isPaid ? '<span class="vip-tag">VIP</span>' : ''}</div>
+              <div class="artist">${song.artist}</div>
+              ${isPaid && !hasVip ? '<div class="paid-tip">试听30秒，开通会员畅听全曲</div>' : ''}
+            </div>
+            <button class="fav-btn" onclick="toggleCardFav(this)" title="收藏">
+              <i class="ti ti-heart"></i>
+            </button>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+          ${isPaid && !hasVip ? `
+          <div class="vip-banner" onclick="openVip()">
+            <i class="ti ti-crown"></i>
+            <span>开通会员，畅听全部歌曲</span>
+            <span class="vip-banner-arrow">›</span>
+          </div>` : ''}
+          <div class="player-controls">
+            <i class="ti ti-player-skip-back"></i>
+            <button class="play-btn" onclick="togglePlay()">
+              <i class="ti ti-player-pause" id="playIcon"></i>
+            </button>
+            <i class="ti ti-player-skip-forward"></i>
+          </div>`;
+      } else {
+        resolve(); return;
+      }
+
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+      startProgress();
+      resolve();
+    }, delay);
+  });
+}
+
+function playTrack(row) {
+  document.querySelectorAll('.playlist-track').forEach(r => r.classList.remove('playing'));
+  row.classList.add('playing');
+}
+
+function startProgress() {
+  playing = true;
+  currentProgress = 0;
+  clearInterval(progressTimer);
+  progressTimer = setInterval(() => {
+    if (!playing) return;
+    currentProgress += 0.5;
+    if (currentProgress >= 100) currentProgress = 0;
+    const fill = document.getElementById('progFill');
+    if (fill) fill.style.width = currentProgress + '%';
+  }, 100);
+}
+
+function togglePlay() {
+  playing = !playing;
+  const icon = document.getElementById('playIcon');
+  if (icon) icon.className = playing ? 'ti ti-player-pause' : 'ti ti-player-play';
+}
+
+function detectIntent(text) {
+  if (text.includes('周杰伦')) return '周杰伦';
+  if (text.includes('热门') || text.includes('新歌') || text.includes('推荐') || text.includes('榜')) return '热门';
+  if (text.includes('专注') || text.includes('纯音乐') || text.includes('工作') || text.includes('学习')) return '专注';
+  if (text.includes('旋律') || text.includes('什么歌') || text.includes('识别') || text.includes('哼')) return '旋律';
+  if (text.includes('伤感') || text.includes('难过') || text.includes('失恋') || text.includes('心情不好')) return '伤感';
+  if (text.includes('运动') || text.includes('跑步') || text.includes('健身') || text.includes('节奏')) return '运动';
+  return null;
+}
+
+async function runFlow(text) {
+  if (isRunning) return;
+  isRunning = true;
+  document.getElementById('userInput').disabled = true;
+
+  const intent = detectIntent(text);
+  setStep(1);
+  await addMsg(text, 'user', 0);
+
+  if (!intent) {
+    await addThinking(400);
+    await new Promise(r => setTimeout(r, 800));
+    removeThinking();
+    await addMsg('嗯... 我没太听懂你的意思 🤔 试试说「播放周杰伦的歌」或者「来首轻音乐」？', 'bot', 0);
+    setStep(0);
+    document.getElementById('userInput').disabled = false;
+    isRunning = false;
+    return;
+  }
+
+  setStep(2);
+  await addThinking(500);
+  await new Promise(r => setTimeout(r, 600));
+  removeThinking();
+
+  setStep(3);
+  await new Promise(r => setTimeout(r, 500));
+
+  setStep(4);
+  await addMusicCard(intent, 300);
+
+  const labels = {
+    '周杰伦': '周董的歌，你来挑一首吧 ～ 🎵',
+    '热门':   '最近这些歌超火的，快来听 🔥',
+    '专注':   '给你挑了首超适合专注的曲子，进入心流状态吧 🌊',
+    '旋律':   '哼哼哼，这首我认出来了！为你播放 🎶',
+    '伤感':   '心情不好的时候，音乐懂你 🌧️',
+    '运动':   '节奏拉满，冲冲冲！⚡',
+  };
+  await addMsg(labels[intent], 'bot', 600);
+
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById('step' + i).classList.remove('active');
+    document.getElementById('step' + i).classList.add('done');
+  }
+
+  document.getElementById('userInput').disabled = false;
+  isRunning = false;
+}
+
+function sendMsg() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  runFlow(text);
+}
+
+function usePreset(text) {
+  document.getElementById('userInput').value = text;
+  sendMsg();
+}
+
+function toggleCardFav(btn) {
+  btn.classList.toggle('faved');
+  const isFaved = btn.classList.contains('faved');
+  btn.querySelector('i').className = isFaved ? 'ti ti-heart-filled' : 'ti ti-heart';
+  showToast(isFaved ? '已加入小跃收藏 ❤️  可在小跃→我的收藏中查看' : '已取消收藏');
+}
+
+function openVip() {
+  // 模拟弹出选择弹窗
+  const mask = document.getElementById('vipMask');
+  if (mask) mask.classList.add('show');
+}
+
+function closeVipMask(e) {
+  if (e.target === document.getElementById('vipMask')) {
+    document.getElementById('vipMask').classList.remove('show');
+  }
+}
+
+function claimVip() {
+  document.getElementById('vipMask').classList.remove('show');
+  showToast('正在跳转激活页面，稍等片刻… 🎁');
+}
+
+function buyVip() {
+  document.getElementById('vipMask').classList.remove('show');
+  showToast('正在跳转开通页面… 🎵');
+}
+
+
+function resetDemo() {
+  clearInterval(progressTimer);
+  playing = false;
+  isRunning = false;
+  currentProgress = 0;
+  document.getElementById('messages').innerHTML = '<div class="msg bot">嗨，我是小跃 👋 有什么需要帮你的？</div>';
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById('step' + i).classList.remove('active', 'done');
+  }
+  document.getElementById('userInput').disabled = false;
+  document.getElementById('userInput').value = '';
+}
+
+document.getElementById('userInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMsg();
+});
+</script>
+
+<!-- 会员弹窗 -->
+<style>
+.vip-mask {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65); z-index: 300;
+  align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.vip-mask.show { display: flex; }
+.vip-sheet {
+  background: #1A1D24; border-radius: 20px 20px 0 0;
+  width: 375px; max-width: 100%; padding: 0 0 32px;
+  animation: vipSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes vipSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.vip-handle {
+  width: 36px; height: 4px; background: rgba(255,255,255,0.15);
+  border-radius: 2px; margin: 12px auto 16px;
+}
+.vip-title {
+  font-size: 16px; font-weight: 600; color: #F3F4F6;
+  text-align: center; margin-bottom: 4px;
+}
+.vip-subtitle {
+  font-size: 12px; color: #6B7280;
+  text-align: center; margin-bottom: 20px;
+}
+.vip-card {
+  margin: 0 20px 12px; border-radius: 12px;
+  padding: 14px; cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; gap: 10px;
+}
+.vip-card-green {
+  background: linear-gradient(135deg,#1C2B1A,#0F2A1F);
+  border: 1px solid rgba(16,185,129,0.25);
+}
+.vip-card-green:hover { border-color: rgba(16,185,129,0.5); }
+.vip-card-blue {
+  background: #111318;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.vip-card-blue:hover { background: #1C2128; }
+.vip-card-icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.vip-card-info { flex: 1; }
+.vip-card-name { font-size: 14px; font-weight: 500; color: #E5E7EB; }
+.vip-card-desc { font-size: 11px; color: #6B7280; margin-top: 2px; }
+.vip-price {
+  font-size: 12px; color: #60A5FA;
+  background: rgba(59,130,246,0.1);
+  padding: 3px 10px; border-radius: 12px; flex-shrink: 0;
+}
+.vip-close-btn {
+  width: calc(100% - 40px); margin: 4px 20px 0;
+  padding: 12px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: transparent; font-size: 14px; color: #6B7280;
+  cursor: pointer; transition: all 0.2s; display: block;
+}
+.vip-close-btn:hover { background: rgba(255,255,255,0.04); }
+</style>
+
+<div class="vip-mask" id="vipMask" onclick="closeVipMask(event)">
+  <div class="vip-sheet">
+    <div class="vip-handle"></div>
+    <div class="vip-title">开通会员</div>
+    <div class="vip-subtitle">解锁全曲畅听权益</div>
+
+    <div class="vip-card vip-card-green" onclick="claimVip()">
+      <div class="vip-card-icon" style="background:rgba(16,185,129,0.15);">
+        <i class="ti ti-gift" style="font-size:18px;color:#10B981;"></i>
+      </div>
+      <div class="vip-card-info">
+        <div class="vip-card-name">免费领取会员权益</div>
+        <div class="vip-card-desc">购机专属权益，点击激活</div>
+      </div>
+      <i class="ti ti-chevron-right" style="color:#6B7280;font-size:18px;flex-shrink:0;"></i>
+    </div>
+
+    <div class="vip-card vip-card-blue" onclick="buyVip()">
+      <div class="vip-card-icon" style="background:rgba(59,130,246,0.15);">
+        <i class="ti ti-crown" style="font-size:18px;color:#60A5FA;"></i>
+      </div>
+      <div class="vip-card-info">
+        <div class="vip-card-name">开通会员</div>
+        <div class="vip-card-desc">解锁全部歌曲，畅听无限制</div>
+      </div>
+      <span class="vip-price">¥6/月</span>
+    </div>
+
+    <button class="vip-close-btn" onclick="document.getElementById('vipMask').classList.remove('show')">稍后再说</button>
+  </div>
+</div>
+
+</body>
+</html>
